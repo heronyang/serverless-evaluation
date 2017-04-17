@@ -4,7 +4,9 @@
 
 # clean up previous log
 echo "" > log
+echo $1
 while true
 do
-    htop -p $1 -bn1 >> log
+    top -bn1 -p $1  >> log
+    sleep 1
 done
