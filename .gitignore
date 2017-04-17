@@ -1,0 +1,11 @@
+# Mac OS file
+.DS_Store
+
+.idea
+
+# Input and output
+temp_configure
+temp_output_data
+jmeter.log
+inputURL.txt
+
