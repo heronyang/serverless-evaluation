@@ -3,13 +3,15 @@
 This program will generate Jmeter configuration and execute Jmeter automatically.
 
 Input: 
-(1)platform: 'OpenLambda' or 'Clofly' or 'Iron'
-(2)inputURL.txt: containing serverless URL line-by-line
-(3)number_URL: the number of processing line is min(#lines in inputURL.txt, number_URL)
+
+1. platform: 'OpenLambda' or 'Clofly' or 'Iron'
+2. inputURL.txt: containing serverless URL line-by-line
+3. number\_URL: the number of processing line is min(#lines in inputURL.txt, number\_URL)
 
 Output:
-(1) Generate temp_configure folder: containing generated Jmeter configuration
-(2) Generate temp_temp_output_data folder: containing Jmeter results
+
+1. Generate temp\_configure folder: containing generated Jmeter configuration
+2. Generate temp\_temp\_output\_data folder: containing Jmeter results
 
 example
 Jmeter Iron inputURL.txt 2
