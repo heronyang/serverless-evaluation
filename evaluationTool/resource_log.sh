@@ -3,10 +3,23 @@
 # Usage: ./resource_log.sh <pid>
 
 # clean up previous log
-echo "" > log
-echo $1
+
+if [ -z "$1" ]
+then
+echo "No log name extension supplied"
+exit
+fi
+
+MEM_LOG="memory$1.log"
+CPU_LOG="cpu$1.log"
+
+echo "" > ${MEM_LOG}
+echo "" > ${CPU_LOG}
+
 while true
 do
-    top -bn1 -p $1  >> log
+    date >> ${MEM_LOG}
+    free >> ${MEM_LOG}
+    uptime >> ${CPU_LOG}
     sleep 1
 done
