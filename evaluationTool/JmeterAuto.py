@@ -2,16 +2,19 @@ import subprocess
 import sys
 import urllib.parse
 import os
+import numpy as np
+import csv
+import time
 
 def defaultsetting():
     # some field needs empty for zeros
     params = {
-        "NumThread": "2",
-        "LoopCount": "2",
+        "NumThread": "1",
+        "LoopCount": "30",
         "Ramp_Time": "0", # in seconds
         "ActionWhenSamplerError": "continue",
-        "Timeout_Response": "3000", # in milliseconds ## IMPORTANT, "" empty means 0
-        "Timeout_Connet": "",
+        "Timeout_Response": "1500", # in milliseconds ## IMPORTANT, "" empty means 0
+        "Timeout_Connet": "1500",
         "KeepAlive": "false",
     }
 
@@ -155,22 +158,27 @@ def executeJmeter(outputFileName, inputURL, numFile, params):
 
     temp_configure_folder = 'temp_configure'
     temp_output_data_folder = 'temp_output_data'
+    file_name_list = []
+    CYCLE_TIME = 90
+    curr_time = time.time()
 
     headerString, tailerString  = headerTailerJmeter(params)
 
     #create temparay folder to store the data
-    result = subprocess.run(['mkdir', temp_configure_folder], stdout=subprocess.PIPE)
-    result.stdout
+
+    # CAUTIOUS remove temp_output_data_folder
+    #result = subprocess.run(['rm', '-r', temp_configure_folder], stdout=subprocess.PIPE)
+    #result.stdout
 
     # CAUTIOUS remove temp_output_data_folder
     result = subprocess.run(['rm', '-r', temp_output_data_folder], stdout=subprocess.PIPE)
     result.stdout
 
-    result = subprocess.run(['mkdir', temp_output_data_folder], stdout=subprocess.PIPE)
+    result = subprocess.run(['mkdir', temp_configure_folder], stdout=subprocess.PIPE)
     result.stdout
 
-
-
+    result = subprocess.run(['mkdir', temp_output_data_folder], stdout=subprocess.PIPE)
+    result.stdout
 
     for i in range(numFile):
 
@@ -188,7 +196,7 @@ def executeJmeter(outputFileName, inputURL, numFile, params):
             outfile.write(tailerString)
 
         #excetue Jmeter
-        output_result = outputFileName + "function_" + str(i) + ".csv"
+        output_result = outputFileName + "Function_" + str(i+1) + ".csv"
         output_result = os.path.join(".",temp_output_data_folder, output_result)
         #print("output_result is {0}".format(output_result))
         print("{0}/{1}".format(i+1, numFile))
@@ -197,13 +205,84 @@ def executeJmeter(outputFileName, inputURL, numFile, params):
         result.stdout
 
 
+        # WAIT
+        waiting_time = CYCLE_TIME - (time.time() - curr_time)
+        print("Sleep {0} seconds".format(waiting_time))
+        time.sleep(waiting_time)
+        curr_time = time.time()
+
+        file_name_list.append(output_result)
+
+    return file_name_list
+
+# Throughtput, latency, drop rate
+def dataconsolidation(file_name_list, TestPlatForm):
+
+    #read data from temp_output_data
+
+    outputfilename = "JmeterResult_" + TestPlatForm + ".csv"
+
+    NumberFunction = 1
+    with open(outputfilename, 'w') as outputF:
+
+        # write header
+        csvWriter = csv.writer(outputF, delimiter=',')
+        csvWriter.writerow(['StarTime', 'EndTime','Number of functions', 'Drop Rate', 'Average Latency', 'Throughput'])
+
+        for file_name in file_name_list:
+            #file = os.path.join(temp_output_data_folder, file_name)
+
+            with open(file_name, 'r') as inputF:
+
+                # Record field name
+                success_list = []
+                timeStamp_list = []
+                Latency_list = []
+                bytes_receive_list = [] #include header and body data
+
+                csvReader = csv.DictReader(inputF)
+                for row in csvReader:
+                    success_list.append(row['success']) # TRUE or FALSE
+                    timeStamp_list.append(int(row['timeStamp'])) # in ms
+                    Latency_list.append(int(row['Latency']))
+                    bytes_receive_list.append(int(row['bytes']))
+
+                # list to narray, list is more efficient than narray in appending element
+                success = np.asarray(success_list)
+                timeStamp = np.asarray(timeStamp_list)
+                Latency = np.asarray(Latency_list)
+                bytes_receive = np.asarray(bytes_receive_list)  # include header and body data
+
+                success_TRUE = (success == "true")
+                #print("SUCCESS {0}".format(success))
+                #print ("result of success_TRUE {0} {1}".format(np.sum(success_TRUE), float(success.size)))
+                Drop = 1.0 - (np.sum(success_TRUE) / (float(success.size)))
+
+                if(np.sum(success_TRUE) == 0): # no success
+                    Average_Latency = 0
+                    Total_byte = 0
+                else:
+                    Average_Latency = np.average(Latency[success_TRUE])
+                    Total_byte = np.sum(bytes_receive[success_TRUE])  # only count success
+
+
+                Total_time_start = np.min(timeStamp)
+                Total_time_end = np.max(timeStamp + Latency)
+                Throughput = Total_byte / float(Total_time_end - Total_time_start) * 1000 # time in millisecond
+
+                # write result to file
+                csvWriter.writerow([Total_time_start, Total_time_end, NumberFunction, Drop, Average_Latency, Throughput])
+
+            NumberFunction += 1
+
+
 
 
 def main(TestPlatForm, inputFileName, NumURL):
     #result = subprocess.run(['jmeter', '-n', '-t', 'Clofly_test.jmx', '-l', 'clofly.jtl'], stdout=subprocess.PIPE)
     #result.stdout
 
-    outputFileName = TestPlatForm + "_"
+    outputFileName = TestPlatForm
 
     #Get params
 
@@ -240,25 +319,36 @@ def main(TestPlatForm, inputFileName, NumURL):
             #print("url_path {0}".format(url_path[1].strip()))
             inputURL.append(url_path[1].strip())
 
-    executeJmeter(outputFileName, inputURL, min(int(NumURL), len(inputURL)), params)
+    file_name_list = executeJmeter(outputFileName, inputURL, min(int(NumURL), len(inputURL)), params)
 
     print("End of Jmeter Processing")
 
+    print("\n\nStart Data Donsolidation")
+    dataconsolidation(file_name_list, TestPlatForm)
+    print("End of Data Donsolidation")
 
 
 def warnInputargument(inputArgument):
-    print("JmeterAuto takes two arguments:\n First is 'OpenLambda' or 'Clofly' or 'Iron'\n Second is input file name"
+    print("JmeterAuto takes three arguments:\n First is 'OpenLambda' or 'Clofly' or 'Iron'\n Second is input file name"
           "\n Third is the number of lines you want to test in input file")
 
     print("Your input is {0}".format(inputArgument))
 
 if __name__ == '__main__':
 
-    # sys.argv[0] is JmeterAuto.py, sys.argv[1] is testplantform, sys.argv[2] is inputFile, sys.argv[3]
-    #print ("input argumaent {0}".format(sys.argv))
+    # sys.argv[0] is JmeterAuto.py, sys.argv[1] is testplantform, sys.argv[2] is inputFile, sys.argv[3] is the number of lines
     if (len(sys.argv) != 4) or (int(sys.argv[3]) <= 0):
         warnInputargument(sys.argv)
 
 
     print("TestPlatForm is {0}".format(sys.argv[1]))
     main(sys.argv[1], sys.argv[2], sys.argv[3])
+
+    #Test dataconsolidation
+    #temp_output_data_folder = "temp_output_data"
+    #file_name_list = ["./temp_output_data/IronFunction_1.csv", "./temp_output_data/IronFunction_2.csv"]
+
+    #dataconsolidation(file_name_list, "Iron")
+    #"OpenLambda" "inputURL_openlambda.txt" "30"
+    #"Clofly" "inputURL_clofly.txt" "30"
+    #"Iron" "inputURL_iron.txt" "30"
