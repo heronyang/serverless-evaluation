@@ -1,12 +1,11 @@
 #!/bin/bash
 CONTROL_DIR=~/open-lambda
-for i in {1..50}
+rm -fr dstat-log-1500/*
+for ((i=1; i<=100; i+=2));
 do
-	echo "Testing $i"
+	echo "\n\n======== Testing $i ========"
 	cd $CONTROL_DIR
-	./restart.sh
+	timeout 10 ./restart.sh
 	cd -
-	echo "Sleeping before test $i"
-	sleep 10
-	timeout 80 sh ./dstat.sh ./dstat-log/log-$i
+	timeout 50 sh ./dstat.sh ./dstat-log-1500/log-$i
 done
