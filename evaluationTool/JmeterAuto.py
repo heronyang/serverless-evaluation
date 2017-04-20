@@ -10,7 +10,7 @@ def defaultsetting():
     # some field needs empty for zeros
     params = {
         "NumThread": "1",
-        "LoopCount": "50",
+        "LoopCount": "30",
         "Ramp_Time": "0", # in seconds
         "ActionWhenSamplerError": "continue",
         "Timeout_Response": "1500", # in milliseconds ## IMPORTANT, "" empty means 0
@@ -159,8 +159,9 @@ def executeJmeter(outputFileName, inputURL, numFile, params):
     temp_configure_folder = 'temp_configure'
     temp_output_data_folder = 'temp_output_data'
     file_name_list = []
-    CYCLE_TIME = 90
+    CYCLE_TIME = 75
     curr_time = time.time()
+    SKIP = 2
 
     headerString, tailerString  = headerTailerJmeter(params)
 
@@ -181,6 +182,9 @@ def executeJmeter(outputFileName, inputURL, numFile, params):
     result.stdout
 
     for i in range(numFile):
+
+        if (i+1)%SKIP == 0:
+            continue
 
         with open("./temp_configure/testconfigure.jmx", 'w') as outfile:
             outfile.write(headerString)
