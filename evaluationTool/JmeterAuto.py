@@ -10,7 +10,7 @@ def defaultsetting():
     # some field needs empty for zeros
     params = {
         "NumThread": "1",
-        "LoopCount": "30",
+        "LoopCount": "50",
         "Ramp_Time": "0", # in seconds
         "ActionWhenSamplerError": "continue",
         "Timeout_Response": "1500", # in milliseconds ## IMPORTANT, "" empty means 0
