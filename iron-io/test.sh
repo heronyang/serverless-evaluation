@@ -6,8 +6,8 @@ do
 	printf "\n======== Testing $i ========\n"
 	# run
 	cd $CONTROL_DIR
-	timeout 10 ./run.sh
+	timeout 15 ./run.sh
 	cd -
 	# measure
-	timeout 65 sh ./dstat.sh ./dstat-log-1500/log-$i
+	timeout 60 sh ./dstat.sh ./dstat-log-1500/log-$i
 done
